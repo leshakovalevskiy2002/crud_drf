@@ -1,17 +1,18 @@
-from rest_framework.decorators import api_view
+from django.http import Http404
+from rest_framework.views import APIView
 from rest_framework.response import Response
 
 from .models import Book
 from .serializers import BookSerializer
 
 
-@api_view(["GET", "POST"])
-def books_list(request):
-    if request.method == 'GET':
+class BookListView(APIView):
+    def get(self, request):
         books = Book.objects.all()
         my_serializer = BookSerializer(books, many=True)
         return Response(my_serializer.data)
-    if request.method == "POST":
+
+    def post(self, request):
         my_serializer = BookSerializer(data=request.data)
         if my_serializer.is_valid():
             my_serializer.save()
@@ -19,24 +20,27 @@ def books_list(request):
         return Response(my_serializer.errors, status=400)
 
 
-@api_view(["GET", "PUT", "DELETE"])
-def book_detail(request, pk):
-    try:
-        book = Book.objects.get(pk=pk)
-    except Book.DoesNotExist:
-        return Response(status=404)
+class BookDetailView(APIView):
+    def get_object(self, pk):
+        try:
+            return Book.objects.get(pk=pk)
+        except Book.DoesNotExist:
+            raise Http404
 
-    if request.method == "GET":
+    def get(self, request, pk):
+        book = self.get_object(pk)
         serializer = BookSerializer(book)
         return Response(serializer.data)
 
-    if request.method == "PUT":
+    def put(self, request, pk):
+        book = self.get_object(pk)
         serializer = BookSerializer(book, request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=400)
 
-    if request.method == "DELETE":
+    def delete(self, request, pk):
+        book = self.get_object(pk)
         book.delete()
         return Response(status=204)
